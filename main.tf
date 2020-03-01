@@ -24,14 +24,14 @@ module "vpc" {
   create          = local.create_vpc
   vpc_name        = var.vpc_name
   vpc_cidr        = var.vpc_cidr
-  vpc_description = "A new VPC created by Terrafrom module terraform-alicloud-vpc"
+  vpc_description = "A new VPC created by Terrafrom module terraform-alicloud-network-with-nat."
   vpc_tags        = merge(var.vpc_tags, var.tags)
 
   vswitch_cidrs       = var.vswitch_cidrs
   availability_zones  = var.availability_zones
   use_num_suffix      = true
   vswitch_name        = var.vswitch_name
-  vswitch_description = "New VSwitch created by Terrafrom module terraform-alicloud-vpc."
+  vswitch_description = "New VSwitch created by Terrafrom module terraform-alicloud-network-with-nat."
   vswitch_tags        = merge(var.vswitch_tags, var.tags)
 }
 
@@ -41,19 +41,18 @@ module "vpc" {
 locals {
   vpc_id              = var.existing_vpc_id != "" ? var.existing_vpc_id : module.vpc.vpc_id
   number_of_eip       = var.number_of_dnat_eip + var.number_of_snat_eip
-  this_nat_gateway_id = var.use_existing_nat_gateway ? var.existing_nat_gateway_id != "" ? var.existing_nat_gateway_id : var.nat_gateway_id : var.create_nat ? concat(alicloud_nat_gateway.this.*.id, [""])[0] : ""
   create_snat_eip     = var.number_of_snat_eip > 0 ? true : false
   create_dnat_eip     = var.number_of_dnat_eip > 0 ? true : false
 }
 
 resource "alicloud_nat_gateway" "this" {
-  count                = var.use_existing_nat_gateway ? 0 : var.create_nat ? 1 : 0
+  count                = var.create_nat ? 1 : 0
   vpc_id               = local.vpc_id
-  name                 = var.name
-  specification        = var.specification
-  description          = "A Nat Gateway created by terraform-alicloud-modules/nat-gateway"
-  instance_charge_type = var.instance_charge_type
-  period               = var.period
+  name                 = var.nat_name
+  specification        = var.nat_specification
+  description          = "A Nat Gateway created by terraform-alicloud-network-with-nat."
+  instance_charge_type = var.nat_instance_charge_type
+  period               = var.nat_period
 }
 
 #########################
@@ -64,7 +63,7 @@ resource "alicloud_common_bandwidth_package" "default" {
   name                 = "tf_cbp"
   bandwidth            = var.cbp_bandwidth
   internet_charge_type = var.cbp_internet_charge_type
-  ratio                = var.ratio
+  ratio                = var.cbp_ratio
 }
 
 #########################
@@ -94,9 +93,9 @@ module "eip_snat" {
 }
 
 resource "alicloud_eip_association" "snat" {
-  count         = local.create_snat_eip && (var.use_existing_nat_gateway || var.create_nat) ? var.number_of_snat_eip : 0
+  count         = local.create_snat_eip && var.create_nat ? var.number_of_snat_eip : 0
   allocation_id = module.eip_snat.this_eip_id[count.index]
-  instance_id   = local.this_nat_gateway_id
+  instance_id   = alicloud_nat_gateway.this.0.id
 }
 
 resource "alicloud_common_bandwidth_package_attachment" "snat" {
@@ -126,7 +125,6 @@ module "snat" {
   create         = var.create_snat
   snat_ips       = var.snat_ips
   snat_table_id  = alicloud_nat_gateway.this.0.snat_table_ids
-  nat_gateway_id = var.nat_gateway_id
 
   snat_with_vswitch_ids          = local.snat_with_vswitch_ids
   snat_with_source_cidrs         = var.snat_with_source_cidrs
@@ -163,9 +161,9 @@ module "eip_dnat" {
 }
 
 resource "alicloud_eip_association" "dnat" {
-  count         = local.create_dnat_eip && (var.use_existing_nat_gateway || var.create_nat) ? var.number_of_dnat_eip : 0
+  count         = local.create_dnat_eip && var.create_nat ? var.number_of_dnat_eip : 0
   allocation_id = module.eip_dnat.this_eip_id[count.index]
-  instance_id   = local.this_nat_gateway_id
+  instance_id   = alicloud_nat_gateway.this.0.id
 }
 
 resource "alicloud_common_bandwidth_package_attachment" "dnat" {
@@ -177,7 +175,7 @@ resource "alicloud_common_bandwidth_package_attachment" "dnat" {
 locals {
   entries = flatten(
     [
-      for idx, obj in var.entries : {
+      for idx, obj in var.dnat_entries : {
         name          = lookup(obj, "name", "")
         ip_protocol   = lookup(obj, "ip_protocol", "")
         external_port = lookup(obj, "external_port", "")
@@ -198,7 +196,6 @@ module "dnat" {
 
   create         = var.create_dnat
   dnat_table_id  = alicloud_nat_gateway.this.0.forward_table_ids
-  nat_gateway_id = var.nat_gateway_id
   entries        = local.entries
-  external_ip    = var.external_ip
+  external_ip    = var.dnat_external_ip
 }

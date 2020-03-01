@@ -39,11 +39,11 @@ module "vpc-nat" {
 
   // common bandwidth package
   cbp_bandwidth = 10
-  ratio         = 100
+  cbp_ratio     = 100
 
   // nat_gateway
   create_nat = true
-  name       = "nat-gateway-foo"
+  nat_name   = "nat-gateway-foo"
 
   // eip
   create_eip = true
@@ -56,7 +56,7 @@ module "vpc-nat" {
   // create eip, snat and bind eip with instance
   create_dnat        = true
   number_of_dnat_eip = 1
-  entries = [
+  dnat_entries = [
     {
       name          = "dnat-443-8443"
       ip_protocol   = "tcp"
