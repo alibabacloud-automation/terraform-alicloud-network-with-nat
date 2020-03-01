@@ -23,7 +23,7 @@ variable "skip_region_validation" {
 # VPC
 #################
 variable "create_vpc" {
-  description = "Whether to create vpc. If false, you can specify an existing vpc by setting 'vpc_id'."
+  description = "Whether to create vpc. If false, you can specify an existing vpc by setting 'existing_vpc_id'."
   type        = bool
   default     = true
 }
@@ -43,7 +43,7 @@ variable "use_existing_vpc" {
 variable "vpc_name" {
   description = "The vpc name used to launch a new vpc."
   type        = string
-  default     = "TF-VPC"
+  default     = "tf-module-network-with-nat"
 }
 
 variable "vpc_cidr" {
@@ -53,7 +53,7 @@ variable "vpc_cidr" {
 }
 
 variable "vpc_tags" {
-  description = "The tags used to launch a new vpc. Before 1.5.0, it used to retrieve existing VPC."
+  description = "The tags used to launch a new vpc."
   type        = map(string)
   default     = {}
 }
@@ -81,7 +81,7 @@ variable "availability_zones" {
 
 variable "vswitch_name" {
   description = "The vswitch name prefix used to launch several new vswitches."
-  default     = "TF-VSwitch"
+  default     = "tf-module-network-with-nat"
 }
 
 variable "vswitch_tags" {
@@ -94,42 +94,30 @@ variable "vswitch_tags" {
 #variables for nat gateway
 ########################
 variable "create_nat" {
-  description = "Whether to create nat gateway. If false, you can specify an existing nat gateway by setting 'nat_gateway_id'."
+  description = "Whether to create nat gateway."
   type        = bool
   default     = true
 }
 
-variable "name" {
+variable "nat_name" {
   description = "Name of a new nat gateway."
   type        = string
-  default     = "terraform-alicloud-nat-gateway"
+  default     = "tf-module-network-with-nat"
 }
 
-variable "use_existing_nat_gateway" {
-  description = "Whether to create nat gateway. If false, you can specify an existing nat gateway by setting 'nat_gateway_id'."
-  type        = bool
-  default     = false
-}
-
-variable "existing_nat_gateway_id" {
-  description = "The id of an existing nat gateway."
-  type        = string
-  default     = ""
-}
-
-variable "specification" {
+variable "nat_specification" {
   description = "The specification of nat gateway."
   type        = string
   default     = "Small"
 }
 
-variable "instance_charge_type" {
+variable "nat_instance_charge_type" {
   description = "The charge type of the nat gateway. Choices are 'PostPaid' and 'PrePaid'."
   type        = string
   default     = "PostPaid"
 }
 
-variable "period" {
+variable "nat_period" {
   description = "The charge duration of the PrePaid nat gateway, in month."
   type        = number
   default     = 1
@@ -139,7 +127,7 @@ variable "period" {
 # New EIP parameters
 ########################
 variable "create_eip" {
-  description = "Whether to create new EIP and bind it to this Nat gateway. If true, the 'number_of_eip' should not be empty."
+  description = "Whether to create new EIP and bind it to this Nat gateway. If true, the 'number_of_dnat_eip' or 'number_of_snat_eip' should not be empty."
   type        = bool
   default     = false
 }
@@ -156,7 +144,7 @@ variable "number_of_snat_eip" {
 variable "eip_name" {
   description = "Name to be used on all eip as prefix. Default to 'TF-EIP-for-Nat'. The final default name would be TF-EIP-for-Nat001, TF-EIP-for-Nat002 and so on."
   type        = string
-  default     = "TF-EIP-for-Nat"
+  default     = "tf-module-network-with-nat"
 }
 
 variable "eip_bandwidth" {
@@ -204,13 +192,13 @@ variable "create_dnat" {
   default     = false
 }
 
-variable "entries" {
+variable "dnat_entries" {
   description = "A list of entries to create. Each item valid keys: 'name'(default to a string with prefix 'tf-dnat-entry' and numerical suffix), 'ip_protocol'(default to 'any'), 'external_ip'(if not, use root parameter 'external_ip'), 'external_port'(default to 'any'), 'internal_ip'(required), 'internal_port'(default to the 'external_port')."
   type        = list(map(string))
   default     = []
 }
 
-variable "external_ip" {
+variable "dnat_external_ip" {
   description = "The public ip address to use on all dnat entries."
   type        = string
   default     = ""
@@ -223,18 +211,6 @@ variable "create_snat" {
   description = "Whether to create snat entries. If true, the 'snat_with_source_cidrs' or 'snat_with_vswitch_ids' or 'snat_with_instance_ids' should be set."
   type        = bool
   default     = false
-}
-
-variable "snat_table_id" {
-  description = "The snat table id to use on all snat entries. If not set, it can be fetched by setting 'nat_gateway_id'."
-  type        = string
-  default     = ""
-}
-
-variable "nat_gateway_id" {
-  description = "The id of a nat gateway used to fetch the 'snat_table_id'."
-  type        = string
-  default     = ""
 }
 
 variable "snat_ips" {
@@ -291,7 +267,7 @@ variable "cbp_internet_charge_type" {
   default     = "PayByTraffic"
 }
 
-variable "ratio" {
+variable "cbp_ratio" {
   description = "Ratio of the common bandwidth package."
   type        = string
   default     = 100
