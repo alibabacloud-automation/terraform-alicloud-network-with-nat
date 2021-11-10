@@ -53,6 +53,8 @@ resource "alicloud_nat_gateway" "this" {
   description          = "A Nat Gateway created by terraform-alicloud-network-with-nat."
   instance_charge_type = var.nat_instance_charge_type
   period               = var.nat_period
+  nat_type             = var.nat_type
+  vswitch_id           = module.vpc.this_vswitch_ids[0]
 }
 
 #########################
@@ -124,7 +126,7 @@ module "snat" {
 
   create         = var.create_snat
   snat_ips       = var.snat_ips
-  snat_table_id  = alicloud_nat_gateway.this.0.snat_table_ids
+  snat_table_id  = concat(alicloud_nat_gateway.this.*.snat_table_ids, [""])[0]
 
   snat_with_vswitch_ids          = local.snat_with_vswitch_ids
   snat_with_source_cidrs         = var.snat_with_source_cidrs
@@ -195,7 +197,7 @@ module "dnat" {
   skip_region_validation  = var.skip_region_validation
 
   create         = var.create_dnat
-  dnat_table_id  = alicloud_nat_gateway.this.0.forward_table_ids
+  dnat_table_id  = concat(alicloud_nat_gateway.this.*.forward_table_ids, [""])[0]
   entries        = local.entries
   external_ip    = var.dnat_external_ip
 }

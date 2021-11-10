@@ -180,7 +180,7 @@ variable "eip_tags" {
 variable "eip_isp" {
   description = "The line type of the Elastic IP instance."
   type        = string
-  default     = ""
+  default     = "BGP"
 }
 
 #################
@@ -264,11 +264,17 @@ variable "cbp_bandwidth" {
 variable "cbp_internet_charge_type" {
   description = "The billing method of the common bandwidth package. Valid values are 'PayByBandwidth' and 'PayBy95' and 'PayByTraffic'. 'PayBy95' is pay by classic 95th percentile pricing. International Account doesn't supports 'PayByBandwidth' and 'PayBy95'. Default to 'PayByTraffic'."
   type        = string
-  default     = "PayByTraffic"
+  default     = "PayByBandwidth"
 }
 
 variable "cbp_ratio" {
   description = "Ratio of the common bandwidth package."
-  type        = string
+  type        = number
   default     = 100
+}
+
+variable "nat_type" {
+  description = "The type of NAT gateway. "
+  type        = string
+  default     = "Enhanced"
 }
