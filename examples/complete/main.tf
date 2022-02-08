@@ -1,103 +1,217 @@
-variable "region" {
-  default = "cn-hangzhou"
+data "alicloud_zones" "default" {
 }
 
-variable "profile" {
-  default = "default"
+data "alicloud_images" "default" {
+  name_regex = "ubuntu_18"
 }
 
-provider "alicloud" {
-  region  = var.region
-  profile = var.profile
+data "alicloud_instance_types" "default" {
+  availability_zone = data.alicloud_zones.default.zones.0.id
+}
+
+resource "alicloud_eip_association" "snat" {
+  count         = 5
+  allocation_id = module.temp_snat_eip.this_eip_id[count.index]
+  instance_id   = module.nat_eip_snat.this_nat_gateway_id
+}
+
+module "security_group" {
+  source = "alibaba/security-group/alicloud"
+  vpc_id = module.vpc.this_vpc_id
+}
+
+module "ecs_instance" {
+  source = "alibaba/ecs-instance/alicloud"
+
+  number_of_instances = 6
+
+  instance_type               = data.alicloud_instance_types.default.instance_types.0.id
+  image_id                    = data.alicloud_images.default.images.0.id
+  vswitch_ids                 = module.vpc.this_vswitch_ids
+  security_group_ids          = [module.security_group.this_security_group_id]
+  associate_public_ip_address = false
+  system_disk_category        = "cloud_ssd"
+  system_disk_size            = var.system_disk_size
+}
+
+module "temp_snat_eip" {
+  source = "terraform-alicloud-modules/eip/alicloud"
+
+  create = true
+
+  number_of_eips       = 5
+  bandwidth            = var.eip_bandwidth
+  internet_charge_type = "PayByTraffic"
+  instance_charge_type = "PostPaid"
+  period               = var.eip_period
+  isp                  = "BGP"
 }
 
 #####################
 # Create vpc, nat-gateway and bind eip and add snat, dnat
 #####################
-module "vpc-nat" {
-  source  = "../.."
-  region  = var.region
-  profile = var.profile
+module "vpc" {
+  source = "../.."
 
-  create_vpc = true
-  vpc_name   = "my-env-vpc"
-  vpc_cidr   = "10.10.0.0/16"
+  # module vpc
+  use_existing_vpc = false
+  create_vpc       = true
 
-  availability_zones = ["cn-hangzhou-e", "cn-hangzhou-f", "cn-hangzhou-g"]
-  vswitch_cidrs      = ["10.10.1.0/24", "10.10.2.0/24", "10.10.3.0/24"]
+  vpc_name        = var.vpc_name
+  vpc_cidr        = "172.16.0.0/16"
+  vpc_description = var.vpc_description
+  vpc_tags        = var.vpc_tags
+  tags            = var.tags
 
-  vpc_tags = {
-    Owner       = "user"
-    Environment = "staging"
-    Name        = "complete"
-  }
+  vswitch_cidrs = [
+    cidrsubnet("172.16.0.0/12", 8, 8), cidrsubnet("172.16.0.0/12", 8, 9), cidrsubnet("172.16.0.0/12", 8, 10),
+    cidrsubnet("172.16.0.0/12", 8, 11), cidrsubnet("172.16.0.0/12", 8, 12), cidrsubnet("172.16.0.0/12", 8, 15)
+  ]
+  availability_zones  = [data.alicloud_zones.default.zones.0.id]
+  use_num_suffix      = true
+  vswitch_name        = var.vswitch_name
+  vswitch_description = var.vswitch_description
+  vswitch_tags        = var.vswitch_tags
 
-  vswitch_tags = {
-    Project  = "Secret"
-    Endpoint = "true"
-  }
+  # nat-gateway
+  create_nat = false
 
-  // common bandwidth package
-  cbp_bandwidth = 10
-  cbp_ratio     = 100
+  # snat
+  number_of_snat_eip = 0
+  create_snat        = false
 
-  // nat_gateway
+  # dnat
+  number_of_dnat_eip = 0
+  create_dnat        = false
+
+}
+
+module "nat_eip_snat" {
+  source = "../.."
+
+  # module vpc
+  create_vpc       = false
+  use_existing_vpc = true
+
+  # nat-gateway
   create_nat = true
-  nat_name   = "nat-gateway-foo"
 
-  // eip
-  create_eip = true
-  eip_name   = "eip-nat-foo"
+  existing_vpc_id      = module.vpc.this_vpc_id
+  vswitch_id           = module.vpc.this_vswitch_ids[0]
+  nat_name             = var.nat_name
+  nat_type             = var.nat_type
+  nat_specification    = var.nat_specification
+  nat_description      = var.nat_description
+  payment_type         = "PayAsYouGo"
+  internet_charge_type = "PayByLcu"
+  nat_period           = var.nat_period
 
-  // create eip, snat and bind eip with vswitch_cidrs
-  create_snat        = true
-  number_of_snat_eip = 3
+  # common bandwodth package
+  bandwidth_package_name   = var.bandwidth_package_name
+  cbp_bandwidth            = var.cbp_bandwidth
+  cbp_internet_charge_type = "PayByBandwidth"
+  cbp_ratio                = 100
 
-  // create eip, snat and bind eip with instance
-  create_dnat        = true
-  number_of_dnat_eip = 1
-  dnat_entries = [
+  # snat_eip
+  number_of_snat_eip       = 1
+  eip_name                 = var.eip_name
+  use_num_suffix           = false
+  eip_bandwidth            = var.eip_bandwidth
+  eip_internet_charge_type = "PayByTraffic"
+  eip_instance_charge_type = "PostPaid"
+  eip_period               = var.eip_period
+  eip_isp                  = "BGP"
+  eip_tags                 = var.eip_tags
+
+  # snat
+  create_snat = true
+
+  snat_ips    = module.temp_snat_eip.this_eip_address
+  vswitch_ids = [module.vpc.this_vswitch_ids[0]]
+  snat_with_source_cidrs = [
     {
-      name          = "dnat-443-8443"
-      ip_protocol   = "tcp"
-      external_port = "443"
-      internal_port = "8443"
-      internal_ip   = concat(module.ecs-instance.this_private_ip, [""])[0]
+      name         = var.eip_name
+      source_cidrs = format("%s/32", module.ecs_instance.this_private_ip.1)
+      snat_ip      = module.temp_snat_eip.this_eip_address[1]
     }
   ]
+  snat_with_instance_ids = [
+    {
+      name         = var.eip_name
+      instance_ids = join(",", [module.ecs_instance.this_instance_id[2]])
+      snat_ip      = module.temp_snat_eip.this_eip_address[2]
+    }
+  ]
+  computed_snat_with_source_cidr = [
+    {
+      name        = var.eip_name
+      source_cidr = format("%s/32", module.ecs_instance.this_private_ip.3)
+      snat_ip     = module.temp_snat_eip.this_eip_address[3]
+    }
+  ]
+  computed_snat_with_vswitch_id = [
+    {
+      name       = var.eip_name
+      vswitch_id = module.vpc.this_vswitch_ids[4]
+      snat_ip    = module.temp_snat_eip.this_eip_address[4]
+    }
+  ]
+
+  # dnat
+  number_of_dnat_eip = 0
+  create_dnat        = false
+
 }
 
-#####################
-# add dnat
-#####################
-data "alicloud_images" "ubuntu" {
-  name_regex = "ubuntu_18"
-}
+module "eip_dnat" {
+  source = "../.."
 
-module "group" {
-  source  = "alibaba/security-group/alicloud"
-  region  = var.region
-  profile = var.profile
+  # module vpc
+  create_vpc       = false
+  use_existing_vpc = true
 
-  name   = "dnat-service"
-  vpc_id = module.vpc-nat.this_vpc_id
-}
+  # nat-gateway
+  create_nat = false
 
-module "ecs-instance" {
-  source  = "alibaba/ecs-instance/alicloud"
-  region  = var.region
-  profile = var.profile
+  # common bandwodth package
+  bandwidth_package_name   = var.bandwidth_package_name
+  cbp_bandwidth            = var.cbp_bandwidth
+  cbp_internet_charge_type = "PayByBandwidth"
+  cbp_ratio                = 100
 
-  number_of_instances = 1
+  # snat_eip
+  number_of_snat_eip = 0
 
-  name                        = "my-ecs-cluster"
-  use_num_suffix              = true
-  instance_type               = "ecs.mn4.small"
-  image_id                    = data.alicloud_images.ubuntu.ids.0
-  vswitch_ids                 = module.vpc-nat.this_vswitch_ids
-  security_group_ids          = [module.group.this_security_group_id]
-  associate_public_ip_address = false
+  # snat
+  create_snat = false
 
-  system_disk_category = "cloud_ssd"
-  system_disk_size     = 50
+  # dnat_eip
+  number_of_dnat_eip = 1
+
+  eip_name                 = var.eip_name
+  use_num_suffix           = false
+  eip_bandwidth            = var.eip_bandwidth
+  eip_internet_charge_type = "PayByTraffic"
+  eip_instance_charge_type = "PostPaid"
+  eip_period               = var.eip_period
+  eip_isp                  = "BGP"
+  eip_tags                 = var.eip_tags
+
+  #alicloud_eip_association
+  dnat_eip_association_instance_id = module.nat_eip_snat.this_nat_gateway_id
+
+  # dnat
+  create_dnat = true
+
+  dnat_table_id = module.nat_eip_snat.this_forward_table_id
+  dnat_entries = [
+    {
+      name          = var.name
+      ip_protocol   = var.ip_protocol
+      external_port = var.external_port
+      internal_port = var.internal_port
+      internal_ip   = module.ecs_instance.this_private_ip[5]
+    }
+  ]
+
 }
