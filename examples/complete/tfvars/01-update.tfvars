@@ -1,5 +1,3 @@
-#ECS
-system_disk_size = 60
 
 # VPC
 vpc_name        = "update-tf-vpc-name"

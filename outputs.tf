@@ -51,32 +51,32 @@ output "this_vswitch_cidr_block" {
 #################
 output "this_nat_gateway_id" {
   description = "The nat gateway id."
-  value       = concat(alicloud_nat_gateway.this.*.id, [""])[0]
+  value       = concat(alicloud_nat_gateway.this[*].id, [""])[0]
 }
 
 output "this_forward_table_id" {
   description = "The forward table id in this nat gateway. Seem as 'this_dnat_table_id'."
-  value       = concat(alicloud_nat_gateway.this.*.forward_table_ids, [""])[0]
+  value       = concat(alicloud_nat_gateway.this[*].forward_table_ids, [""])[0]
 }
 
 output "this_snat_table_id" {
   description = "The snat table id in this nat gateway."
-  value       = concat(alicloud_nat_gateway.this.*.snat_table_ids, [""])[0]
+  value       = concat(alicloud_nat_gateway.this[*].snat_table_ids, [""])[0]
 }
 
 output "this_nat_gateway_name" {
   description = "The nat gateway name."
-  value       = concat(alicloud_nat_gateway.this.*.name, [""])[0]
+  value       = concat(alicloud_nat_gateway.this[*].name, [""])[0]
 }
 
 output "this_nat_gateway_spec" {
   description = "The nat gateway spec."
-  value       = concat(alicloud_nat_gateway.this.*.spec, [""])[0]
+  value       = concat(alicloud_nat_gateway.this[*].spec, [""])[0]
 }
 
 output "this_nat_gateway_description" {
   description = "The nat gateway id."
-  value       = concat(alicloud_nat_gateway.this.*.description, [""])[0]
+  value       = concat(alicloud_nat_gateway.this[*].description, [""])[0]
 }
 
 #################
@@ -136,24 +136,4 @@ output "this_snat_entry_id_of_snat_with_instance_ids" {
 output "this_snat_entry_name_of_snat_with_instance_ids" {
   description = "List of names creating by snat_with_instance_ids."
   value       = module.snat.this_snat_entry_name_of_snat_with_instance_ids
-}
-
-output "this_snat_entry_id_of_computed_snat_with_source_cidrs" {
-  description = "List of ids creating by computed_snat_with_source_cidrs."
-  value       = module.snat.this_snat_entry_id_of_computed_snat_with_source_cidrs
-}
-
-output "this_snat_entry_name_of_computed_snat_with_source_cidrs" {
-  description = "List of names creating by computed_snat_with_source_cidrs."
-  value       = module.snat.this_snat_entry_name_of_computed_snat_with_source_cidrs
-}
-
-output "this_snat_entry_id_of_computed_snat_with_vswitch_ids" {
-  description = "List of ids creating by computed_snat_with_vswitch_ids."
-  value       = module.snat.this_snat_entry_id_of_computed_snat_with_vswitch_ids
-}
-
-output "this_snat_entry_name_of_computed_snat_with_vswitch_ids" {
-  description = "List of names creating by computed_snat_with_vswitch_ids."
-  value       = module.snat.this_snat_entry_name_of_computed_snat_with_vswitch_ids
 }
