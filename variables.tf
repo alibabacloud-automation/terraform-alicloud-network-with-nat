@@ -1,26 +1,3 @@
-variable "region" {
-  description = "(Deprecated from version 1.1.0) The region used to launch this module resources."
-  type        = string
-  default     = ""
-}
-
-variable "profile" {
-  description = "(Deprecated from version 1.1.0) The profile name as set in the shared credentials file. If not set, it will be sourced from the ALICLOUD_PROFILE environment variable."
-  type        = string
-  default     = ""
-}
-
-variable "shared_credentials_file" {
-  description = "(Deprecated from version 1.1.0) This is the path to the shared credentials file. If this is not set and a profile is specified, $HOME/.aliyun/config.json will be used."
-  type        = string
-  default     = ""
-}
-
-variable "skip_region_validation" {
-  description = "(Deprecated from version 1.1.0) Skip static validation of region ID. Used by users of alternative AlibabaCloud-like APIs or users w/ access to regions that are not public (yet)."
-  type        = bool
-  default     = false
-}
 
 variable "nat_instance_charge_type" {
   description = "(Deprecated from version 1.2.0) The charge type of the nat gateway. Choices are 'PostPaid' and 'PrePaid'."
@@ -202,15 +179,6 @@ variable "cbp_ratio" {
   default     = 100
 }
 
-########################
-# New EIP parameters
-########################
-variable "create_eip" {
-  description = "Whether to create new EIP and bind it to this Nat gateway. If true, the 'number_of_dnat_eip' or 'number_of_snat_eip' should not be empty."
-  type        = bool
-  default     = false
-}
-
 variable "number_of_snat_eip" {
   description = "Number of EIP instance used to bind with this Snat."
   type        = number
@@ -275,7 +243,7 @@ variable "dnat_eip_association_instance_id" {
 # Snat Entries
 #################
 variable "create_snat" {
-  description = "Whether to create snat entries. If true, the 'snat_with_source_cidrs' or 'snat_with_vswitch_ids' or 'snat_with_instance_ids' should be set."
+  description = "Whether to create snat entries. If true, the 'snat_with_source_cidrs' or 'snat_with_instance_ids' should be set."
   type        = bool
   default     = false
 }
@@ -294,35 +262,22 @@ variable "vswitch_ids" {
 
 variable "snat_with_source_cidrs" {
   description = "List of snat entries to create by cidr blocks. Each item valid keys: 'source_cidrs'(required, using comma joinor to set multi cidrs), 'snat_ip'(if not, use root parameter 'snat_ips', using comma joinor to set multi ips), 'name'(if not, will return one automatically)."
-  type        = list(map(string))
-  default     = []
-}
-
-variable "snat_with_vswitch_ids" {
-  description = "List of snat entries to create by vswitch ids. Each item valid keys: 'vswitch_ids'(required, using comma joinor to set multi vswitch ids), 'snat_ip'(if not, use root parameter 'snat_ips', using comma joinor to set multi ips), 'name'(if not, will return one automatically)."
-  type        = list(map(string))
-  default     = []
+  type = list(object({
+    name         = optional(string, null)
+    source_cidrs = optional(list(string), [])
+    snat_ip      = optional(string, null)
+  }))
+  default = []
 }
 
 variable "snat_with_instance_ids" {
   description = "List of snat entries to create by ecs instance ids. Each item valid keys: 'instance_ids'(required, using comma joinor to set multi instance ids), 'snat_ip'(if not, use root parameter 'snat_ips', using comma joinor to set multi ips), 'name'(if not, will return one automatically)."
-  type        = list(map(string))
-  default     = []
-}
-
-######################
-# Computed Snat Entries
-#######################
-variable "computed_snat_with_source_cidr" {
-  description = "List of computed snat entries to create by cidr blocks. Each item valid keys: 'source_cidr'(required), 'snat_ip'(if not, use root parameter 'snat_ips', using comma joinor to set multi ips), 'name'(if not, will return one automatically)."
-  type        = list(map(string))
-  default     = []
-}
-
-variable "computed_snat_with_vswitch_id" {
-  description = "List of computed snat entries to create by vswitch ids. Each item valid keys: 'vswitch_id'(required), 'snat_ip'(if not, use root parameter 'snat_ips', using comma joinor to set multi ips), 'name'(if not, will return one automatically)."
-  type        = list(map(string))
-  default     = []
+  type = list(object({
+    name         = optional(string, null)
+    instance_ids = optional(list(string), [])
+    snat_ip      = optional(string, null)
+  }))
+  default = []
 }
 
 #################
@@ -346,8 +301,3 @@ variable "dnat_entries" {
   default     = []
 }
 
-variable "dnat_external_ip" {
-  description = "The public ip address to use on all dnat entries."
-  type        = string
-  default     = ""
-}

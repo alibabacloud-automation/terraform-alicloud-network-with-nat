@@ -6,7 +6,7 @@ data "alicloud_images" "default" {
 }
 
 data "alicloud_instance_types" "default" {
-  availability_zone = data.alicloud_zones.default.zones.0.id
+  availability_zone = data.alicloud_zones.default.zones[0].id
 }
 
 resource "alicloud_eip_association" "snat" {
@@ -16,17 +16,20 @@ resource "alicloud_eip_association" "snat" {
 }
 
 module "security_group" {
-  source = "alibaba/security-group/alicloud"
+  source  = "alibaba/security-group/alicloud"
+  version = "2.4.0"
+
   vpc_id = module.vpc.this_vpc_id
 }
 
 module "ecs_instance" {
-  source = "alibaba/ecs-instance/alicloud"
+  source  = "alibaba/ecs-instance/alicloud"
+  version = "2.12.0"
 
   number_of_instances = 6
 
-  instance_type               = data.alicloud_instance_types.default.instance_types.0.id
-  image_id                    = data.alicloud_images.default.images.0.id
+  instance_type               = data.alicloud_instance_types.default.instance_types[0].id
+  image_id                    = data.alicloud_images.default.images[0].id
   vswitch_ids                 = module.vpc.this_vswitch_ids
   security_group_ids          = [module.security_group.this_security_group_id]
   associate_public_ip_address = false
@@ -35,7 +38,8 @@ module "ecs_instance" {
 }
 
 module "temp_snat_eip" {
-  source = "terraform-alicloud-modules/eip/alicloud"
+  source  = "terraform-alicloud-modules/eip/alicloud"
+  version = "2.0.0"
 
   create = true
 
@@ -67,7 +71,7 @@ module "vpc" {
     cidrsubnet("172.16.0.0/12", 8, 8), cidrsubnet("172.16.0.0/12", 8, 9), cidrsubnet("172.16.0.0/12", 8, 10),
     cidrsubnet("172.16.0.0/12", 8, 11), cidrsubnet("172.16.0.0/12", 8, 12), cidrsubnet("172.16.0.0/12", 8, 15)
   ]
-  availability_zones  = [data.alicloud_zones.default.zones.0.id]
+  availability_zones  = [data.alicloud_zones.default.zones[0].id]
   use_num_suffix      = true
   vswitch_name        = var.vswitch_name
   vswitch_description = var.vswitch_description
@@ -131,29 +135,15 @@ module "nat_eip_snat" {
   snat_with_source_cidrs = [
     {
       name         = var.eip_name
-      source_cidrs = format("%s/32", module.ecs_instance.this_private_ip.1)
+      source_cidrs = [format("%s/32", module.ecs_instance.this_private_ip[1])]
       snat_ip      = module.temp_snat_eip.this_eip_address[1]
     }
   ]
   snat_with_instance_ids = [
     {
       name         = var.eip_name
-      instance_ids = join(",", [module.ecs_instance.this_instance_id[2]])
+      instance_ids = [module.ecs_instance.this_instance_id[2]]
       snat_ip      = module.temp_snat_eip.this_eip_address[2]
-    }
-  ]
-  computed_snat_with_source_cidr = [
-    {
-      name        = var.eip_name
-      source_cidr = format("%s/32", module.ecs_instance.this_private_ip.3)
-      snat_ip     = module.temp_snat_eip.this_eip_address[3]
-    }
-  ]
-  computed_snat_with_vswitch_id = [
-    {
-      name       = var.eip_name
-      vswitch_id = module.vpc.this_vswitch_ids[4]
-      snat_ip    = module.temp_snat_eip.this_eip_address[4]
     }
   ]
 
