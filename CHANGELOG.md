@@ -1,4 +1,8 @@
 ## 1.3.0 (Unreleased)
+## 1.2.1 (March 25, 2025)
+
+- examples/complete: improve the examples [GH-7](https://github.com/alibabacloud-automation/terraform-alicloud-network-with-nat/pull/7)
+
 ## 1.2.0 (September 14, 2024)
 
 - module: remove deprecated variables; examples/complete: improve the examples [GH-6](https://github.com/alibabacloud-automation/terraform-alicloud-network-with-nat/pull/6)
