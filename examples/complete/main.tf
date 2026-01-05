@@ -1,15 +1,21 @@
+provider "alicloud" {
+  region = "cn-zhangjiakou"
+}
+
 data "alicloud_zones" "default" {
 }
 
-data "alicloud_images" "default" {
-  name_regex = "ubuntu_18"
-}
 
 data "alicloud_instance_types" "default" {
   availability_zone    = data.alicloud_zones.default.zones[0].id
   cpu_core_count       = 2
   memory_size          = 8
-  instance_type_family = "ecs.g6"
+  instance_type_family = "ecs.g9i"
+}
+
+data "alicloud_images" "default" {
+  most_recent   = true
+  instance_type = data.alicloud_instance_types.default.instance_types[0].id
 }
 
 resource "alicloud_eip_association" "snat" {
@@ -36,7 +42,7 @@ module "ecs_instance" {
   vswitch_ids                 = module.vpc.this_vswitch_ids
   security_group_ids          = [module.security_group.this_security_group_id]
   associate_public_ip_address = false
-  system_disk_category        = "cloud_ssd"
+  system_disk_category        = "cloud_essd"
   system_disk_size            = var.system_disk_size
 }
 
