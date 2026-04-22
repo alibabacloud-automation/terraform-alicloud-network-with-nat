@@ -248,12 +248,6 @@ variable "create_snat" {
   default     = false
 }
 
-variable "snat_ips" {
-  description = "The public ip addresses to use on all snat entries."
-  type        = list(string)
-  default     = []
-}
-
 variable "vswitch_ids" {
   description = "A list of virtual switch IDs to launch in."
   type        = list(string)

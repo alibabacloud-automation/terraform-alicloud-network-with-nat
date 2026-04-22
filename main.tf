@@ -7,7 +7,7 @@ locals {
 
 module "vpc" {
   source  = "alibaba/vpc/alicloud"
-  version = "1.11.0"
+  version = "2.0.0"
 
   create = local.create_vpc
 
@@ -63,9 +63,8 @@ resource "alicloud_common_bandwidth_package" "default" {
 #########################
 module "eip_snat" {
   source  = "terraform-alicloud-modules/eip/alicloud"
-  version = "2.0.0"
+  version = "3.0.1"
 
-  create               = local.create_snat_eip
   number_of_eips       = var.number_of_snat_eip
   name                 = var.eip_name
   use_num_suffix       = var.use_num_suffix
@@ -106,10 +105,9 @@ locals {
 
 module "snat" {
   source  = "terraform-alicloud-modules/snat/alicloud"
-  version = "2.1.0"
+  version = "3.0.1"
 
   create                 = var.create_snat
-  snat_ips               = var.snat_ips
   snat_table_id          = concat(alicloud_nat_gateway.this[*].snat_table_ids, [""])[0]
   snat_with_vswitch_ids  = local.snat_with_vswitch_ids
   snat_with_source_cidrs = var.snat_with_source_cidrs
@@ -123,9 +121,8 @@ module "snat" {
 #########################
 module "eip_dnat" {
   source  = "terraform-alicloud-modules/eip/alicloud"
-  version = "2.0.0"
+  version = "3.0.1"
 
-  create               = local.create_dnat_eip
   number_of_eips       = var.number_of_dnat_eip
   name                 = var.eip_name
   use_num_suffix       = var.use_num_suffix
@@ -170,7 +167,7 @@ locals {
 
 module "dnat" {
   source  = "terraform-alicloud-modules/dnat/alicloud"
-  version = "1.1.0"
+  version = "2.0.1"
 
   create        = var.create_dnat
   dnat_table_id = var.dnat_table_id != "" ? var.dnat_table_id : concat(alicloud_nat_gateway.this[*].forward_table_ids, [""])[0]

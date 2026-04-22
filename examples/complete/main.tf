@@ -16,6 +16,7 @@ data "alicloud_instance_types" "default" {
 data "alicloud_images" "default" {
   most_recent   = true
   instance_type = data.alicloud_instance_types.default.instance_types[0].id
+  owners        = "system"
 }
 
 resource "alicloud_eip_association" "snat" {
@@ -26,14 +27,14 @@ resource "alicloud_eip_association" "snat" {
 
 module "security_group" {
   source  = "alibaba/security-group/alicloud"
-  version = "2.4.0"
+  version = "3.0.0"
 
   vpc_id = module.vpc.this_vpc_id
 }
 
 module "ecs_instance" {
   source  = "alibaba/ecs-instance/alicloud"
-  version = "2.12.0"
+  version = "4.0.0"
 
   number_of_instances = 6
 
@@ -48,9 +49,7 @@ module "ecs_instance" {
 
 module "temp_snat_eip" {
   source  = "terraform-alicloud-modules/eip/alicloud"
-  version = "2.0.0"
-
-  create = true
+  version = "3.0.1"
 
   number_of_eips       = 5
   bandwidth            = var.eip_bandwidth
@@ -139,7 +138,6 @@ module "nat_eip_snat" {
   # snat
   create_snat = true
 
-  snat_ips    = module.temp_snat_eip.this_eip_address
   vswitch_ids = [module.vpc.this_vswitch_ids[0]]
   snat_with_source_cidrs = [
     {
